@@ -165,43 +165,6 @@ jobs:
       SCCACHE_DIRECT: yes
 
     steps:
-      - name: Free up disk space
-        run: |
-          df -h /home
-
-          packages=(
-            'aspnetcore-*'
-            'azure-*'
-            'containerd.io'
-            'containernetworking-plugins'
-            'docker-ce*'
-            'dotnet-*'
-            'firefox'
-            'gfortran-*'
-            'google-chrome*'
-            'google-cloud-cli*'
-            'kubectl'
-            'linux-azure-*'
-            'linux-modules-*-azure'
-            'microsoft-edge-*'
-            'mono-*'
-            'monodoc-*'
-            'msbuild'
-            'mysql-*'
-            'podman'
-            'postgresql-*'
-            'powershell'
-            'r-base-core'
-          )
-          sudo apt purge -q ${packages[@]}
-          sudo apt autoremove
-
-          sudo rm -rf /usr/local/share/powershell
-          sudo rm -rf /var/lib/docker
-          sudo rm -rf /usr/share/swift
-
-          df -h /home
-
       - run: |
           sudo apt-get update
           sudo apt-get install -qq --no-install-recommends bison flex gcc-multilib g++-multilib ninja-build
@@ -263,4 +226,5 @@ jobs:
               --arch ${{ matrix.processor }}                                    \
               --platform-name remote-linux                                      \
               --platform-url connect://localhost:${{ env.DEBUG_PORT }}          \
-              ${{ github.workspace }}/SourceCache/llvm-project/lldb/test/API/api
+              --excluded ${{ github.workspace }}/SourceCache/ds2/Support/Testing/Excluded/ds2/android-x86_64.excluded \
+              --excluded ${{ github.workspace }}/SourceCache/ds2/Support/Testing/Excluded/upstream/non-debugserver-tests.excluded
