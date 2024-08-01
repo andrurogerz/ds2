@@ -12,26 +12,41 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          repository: compnerd/ds2
+          ref: ${{ needs.context.outputs.ds2_revision }}
+          path: ${{ github.workspace }}/SourceCache/ds2
+          show-progress: false
+
       - uses: compnerd/gha-setup-vsdevenv@main
+        with:
+          host_arch: amd64
+          components: 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64;Microsoft.VisualStudio.Component.VC.Tools.ARM64'
+          arch: amd64
 
       - name: Install Build Tools
         run: choco install winflexbison3
 
-      - name: Configure
+      - name: Configure RegsGen2
         run: |
           cmake -B ${{ github.workspace }}/BinaryCache/RegsGen2 `
-                -C ${{ github.workspace }}/cmake/caches/MSVCWarnings.cmake `
-                -G "Visual Studio 17 2022" `
-                -A x64 `
-                -S ${{ github.workspace }}/Tools/RegsGen2
-      - name: Build
+                -S ${{ github.workspace }}/SourceCache/ds2/Tools/RegsGen2 `
+                -C ${{ github.workspace }}/SourceCache/ds2/cmake/caches/MSVCWarnings.cmake `
+                -D CMAKE_C_COMPILER=cl `
+                -D CMAKE_CXX_COMPILER=cl `
+                -D CMAKE_C_FLAGS="-ffunction-sections -fdata-sections" `
+                -D CMAKE_CXX_FLAGS="-ffunction-sections -fdata-sections" `
+                -D CMAKE_MT=mt `
+                -G Ninja
+
+      - name: Build RegsGen2
         run: cmake --build ${{ github.workspace }}/BinaryCache/RegsGen2 --config Release
 
       - uses: actions/upload-artifact@v4
         with:
           name: windows-regsgen2
           path: |
-            ${{ github.workspace }}/BinaryCache/RegsGen2/Release/regsgen2.exe
+            ${{ github.workspace }}/BinaryCache/RegsGen2/regsgen2.exe
 
   windows:
     needs: [windows_tools]
@@ -188,36 +203,96 @@ jobs:
     runs-on: windows-latest
 
     strategy:
+      fail-fast: false
       matrix:
-        abi: ['x86_64', 'x86', 'arm64-v8a', 'armeabi-v7a']
+        include:
+          - arch: arm64
+            cc: clang
+            cflags: "-ffunction-sections -fdata-sections"
+            cxx: clang++
+            cxxflags: "-ffunction-sections -fdata-sections"
+            os: Android
+            extra_flags: -DCMAKE_ANDROID_API=28 -DCMAKE_ANDROID_ARCH_ABI=arm64-v8a
+
+          - arch: armv7
+            cc: clang
+            cflags: "-ffunction-sections -fdata-sections"
+            cxx: clang++
+            cxxflags: "-ffunction-sections -fdata-sections"
+            os: Android
+            extra_flags: -DCMAKE_ANDROID_API=28 -DCMAKE_ANDROID_ARCH_ABI=armeabi-v7a
+
+          - arch: i686
+            cc: clang
+            cflags: "-ffunction-sections -fdata-sections"
+            cxx: clang++
+            cxxflags: "-ffunction-sections -fdata-sections"
+            os: Android
+            extra_flags: -DCMAKE_ANDROID_API=28 -DCMAKE_ANDROID_ARCH_ABI=x86
+
+          - arch: x86_64
+            cc: clang
+            cflags: "-ffunction-sections -fdata-sections"
+            cxx: clang++
+            cxxflags: "-ffunction-sections -fdata-sections"
+            os: Android
+            extra_flags: -DCMAKE_ANDROID_API=28 -DCMAKE_ANDROID_ARCH_ABI=x86_64
+
+    name: ${{ matrix.os }} ${{ matrix.arch }} ds2
 
     steps:
       - uses: actions/checkout@v4
-      - uses: seanmiddleditch/gha-setup-ninja@master
+        with:
+          repository: compnerd/ds2
+          ref: ${{ needs.context.outputs.ds2_revision }}
+          path: ${{ github.workspace }}/SourceCache/ds2
+          show-progress: false
+
+      - uses: compnerd/gha-setup-vsdevenv@main
+        with:
+          host_arch: amd64
+          components: 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64;Microsoft.VisualStudio.Component.VC.Tools.ARM64'
+          arch: ${{ matrix.arch }}
+
+      - name: Install Flex and Bison Tools
+        run: choco install winflexbison3
+
       - uses: actions/download-artifact@v4
         with:
           name: windows-regsgen2
-          path: ${{ github.workspace }}/BinaryCache/RegsGen2/Release
+          path: ${{ github.workspace }}/BinaryCache/RegsGen2
 
-      - name: Install Build Tools
-        run: choco install winflexbison3
+      - uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26b
 
-      # cmake finds the Android NDK from ANDROID_NDK in the environment, which
-      # is pre-installed and configured in the Windows runner image.
-      - name: Configure
+      - name: Configure DS2
         run: |
+          $NDKPATH = cygpath -m ${{ steps.setup-ndk.outputs.ndk-path }}
           cmake -B ${{ github.workspace }}/BinaryCache/ds2 `
                 -D CMAKE_BUILD_TYPE=Release `
-                -D CMAKE_SYSTEM_NAME=Android `
-                -D CMAKE_ANDROID_ARCH_ABI=${{ matrix.abi }} `
-                -D DS2_REGSGEN2=${{ github.workspace }}/BinaryCache/RegsGen2/Release/regsgen2.exe `
-                -G Ninja
+                -D CMAKE_C_COMPILER=${{ matrix.cc }} `
+                -D CMAKE_C_FLAGS="${{ matrix.cflags }}" `
+                -D CMAKE_CXX_COMPILER=${{ matrix.cxx }} `
+                -D CMAKE_CXX_FLAGS="${{ matrix.cxxflags }}" `
+                -D CMAKE_MT=mt `
+                -D CMAKE_INSTALL_PREFIX=${{ github.workspace }}/BuildRoot/Library/DebugServer2 `
+                -D MSVC_C_ARCHITECTURE_ID=${{ matrix.arch }} `
+                -D DS2_REGSGEN2=${{ github.workspace }}/BinaryCache/RegsGen2/regsgen2.exe `
+                -D CMAKE_SYSTEM_NAME=${{ matrix.os }} `
+                -D CMAKE_ANDROID_NDK=$NDKPATH `
+                ${{ matrix.extra_flags }} `
+                -G Ninja `
+                -S ${{ github.workspace }}/SourceCache/ds2
 
-      - name: Build
-        run: cmake --build ${{ github.workspace }}/BinaryCache/ds2 --config Release
+      - name: Build DS2
+        run: cmake --build ${{ github.workspace }}/BinaryCache/ds2
+
+      - name: Install DS2
+        run: cmake --build ${{ github.workspace }}/BinaryCache/ds2 --target install
 
       - uses: actions/upload-artifact@v4
         with:
-          name: android-${{ matrix.abi }}-ds2
-          path: |
-            ${{ github.workspace }}/BinaryCache/ds2/ds2
+          name: ds2-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ github.workspace }}/BuildRoot/Library/DebugServer2/bin/ds2
