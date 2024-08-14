@@ -330,7 +330,9 @@ jobs:
               --arch ${{ matrix.processor }}                                    \
               --platform-name remote-linux                                      \
               --platform-url connect://localhost:5432                           \
-              ${{ github.workspace }}/SourceCache/llvm/lldb/test/API/api
+              --excluded ${{ github.workspace }}/SourceCache/ds2/Support/Testing/Excluded/upstream/non-debugserver-tests.excluded \
+              --excluded ${{ github.workspace }}/SourceCache/ds2/Support/Testing/Excluded/ds2/linux-${{ matrix.processor }}.excluded \
+              --excluded ${{ github.workspace }}/SourceCache/ds2/Support/Testing/Excluded/upstream/linux-${{ matrix.processor }}.excluded
 
   test-android:
     needs: [android-windows-ndk, linux-lldb]
