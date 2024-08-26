@@ -8,7 +8,7 @@ on:
   workflow_call:
 
 env:
-  LLVM_REF: ca102b2114fa8a00096d71ff9fc3b1b218f0f01a
+  LLVM_REF: main
   SCCACHE_DIRECT: yes
 
 jobs:
