@@ -366,6 +366,83 @@ jobs:
               --platform-url connect://localhost:5432                           \
               ${{ matrix.test-subdirs }}
 
+  test-linux-lldb-server:
+    needs: [linux-lldb]
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - test-category: misc
+            processor: i686
+            test-subdirs: >-
+              SourceCache/llvm/lldb/test/API/api
+              SourceCache/llvm/lldb/test/API/lang
+              SourceCache/llvm/lldb/test/API/linux
+              SourceCache/llvm/lldb/test/API/tools
+              SourceCache/llvm/lldb/test/API/sanity
+              SourceCache/llvm/lldb/test/API/types
+
+          - test-category: misc
+            processor: x86_64
+            test-subdirs: >-
+              SourceCache/llvm/lldb/test/API/api
+              SourceCache/llvm/lldb/test/API/lang
+              SourceCache/llvm/lldb/test/API/linux
+              SourceCache/llvm/lldb/test/API/tools
+              SourceCache/llvm/lldb/test/API/sanity
+              SourceCache/llvm/lldb/test/API/types
+
+          - test-category: commands
+            processor: x86_64
+            test-subdirs: >-
+              SourceCache/llvm/lldb/test/API/commands
+
+          - test-category: Python API
+            processor: x86_64
+            test-subdirs: >-
+              SourceCache/llvm/lldb/test/API/python_api
+
+          - test-category: functionalities
+            processor: x86_64
+            test-subdirs: >-
+              SourceCache/llvm/lldb/test/API/functionalities
+
+    steps:
+      - run: |
+          sudo apt-get update
+          sudo apt-get install -qq --no-install-recommends gcc-multilib g++-multilib
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: llvm-${{ runner.os }}-${{ runner.arch }}
+          path: ${{ github.workspace }}/BinaryCache
+      - name: untar llvm artifacts
+        run: |
+          tar -C ${{ github.workspace }}/BinaryCache -xvf ${{ github.workspace }}/BinaryCache/llvm.tar
+
+      - name: Checkout llvm project
+        uses: actions/checkout@v4
+        with:
+          repository: llvm/llvm-project
+          ref: ${{ env.LLVM_REF }}
+          path: ${{ github.workspace }}/SourceCache/llvm
+
+      - name: Checkout ds2
+        uses: actions/checkout@v4
+        with:
+          path: ${{ github.workspace }}/SourceCache/ds2
+
+      - run: |
+          ${{ github.workspace }}/BinaryCache/llvm/bin/lldb-server platform --server --listen localhost:5432 &
+          ${{ github.workspace }}/BinaryCache/llvm/bin/lldb-dotest              \
+              --out-of-tree-debugserver                                         \
+              --arch ${{ matrix.processor }}                                    \
+              --platform-name remote-linux                                      \
+              --platform-url connect://localhost:5432                           \
+              ${{ matrix.test-subdirs }}
+
   test-android:
     needs: [android-windows-ndk, linux-lldb]
     runs-on: ubuntu-latest
@@ -548,7 +625,7 @@ jobs:
             ${{ matrix.test-subdirs }}
 
   test-android-lldb-server:
-    needs: [android-windows-ndk, linux-lldb]
+    needs: [linux-lldb]
     runs-on: ubuntu-latest
 
     strategy:
