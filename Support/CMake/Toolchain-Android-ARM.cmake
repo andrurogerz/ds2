@@ -9,5 +9,5 @@
 ##
 
 set(CMAKE_SYSTEM_NAME Android)
-set(CMAKE_ANDROID_ARCH_ABI armeabi)
-set(CMAKE_ANDROID_NDK /tmp/android-ndk)
+set(CMAKE_ANDROID_ARCH_ABI armeabi-v7a)
+set(CMAKE_ANDROID_NDK $ENV{ANDROID_NDK_ROOT})
