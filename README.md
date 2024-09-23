@@ -5,10 +5,12 @@ ds2 is a debug server designed to be used with [LLDB](http://lldb.llvm.org/) to 
 ## Building ds2
 
 ds2 uses [CMake](http://www.cmake.org/) to generate its build system. A variety
-of CMake toolchain files are provided to help with cross compilation for other
-targets.
+of CMake toolchain files are provided under the `Support\CMake` directory to
+help with cross compilation for other targets.
 
-The build instructions include instructions assuming that the [ninja-build](https://github.com/ninja-build/ninja) is used for the build tool.  However, it is possible to use other build tools (e.g. make or msbuild).
+The build instructions include instructions assuming that the
+[ninja-build](https://github.com/ninja-build/ninja) is used for the build tool.
+However, it is possible to use other build tools (e.g. make or msbuild).
 
 ### Requirements
 
@@ -23,6 +25,9 @@ The build instructions include instructions assuming that the [ninja-build](http
 **non-Windows Platforms**
   - flex
   - bison
+
+**Android**
+  - Android NDK r18b or newer (https://developer.android.com/ndk/downloads)
 
 ### Building with CMake + Ninja
 
@@ -41,30 +46,25 @@ ninja -C out
 ### Compiling for Android
 
 For Android native debugging, it is possible to build ds2 with the Android NDK.
-A script is provided to download the Android NDK automatically for you.
+An NDK version of at least r18b is required for C++17 support.
 
-`Support/Scripts/prepare-android-ndk.py` will download a working version
-of the NDK, extract it, and install it to `/tmp/android-ndk`.
-
+If building using the provided CMake toolchain files for Android, the
+`$ANDROID_NDK_ROOT` environment variable must refer to the location of the
+installed NDK.
+```sh
+export ANDROID_NDK_ROOT=/home/user/Android/Sdk/ndk/26.1.10909125
+```
+Alternatively, the NDK location can be provided to CMake by
+specifying `-DCMAKE_ANDROID_NDK=/home/user/Android/Sdk/ndk/26.1.10909125`.
 ```sh
 cd ds2
-./Support/Scripts/prepare-android-ndk.py
-mkdir build && cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../Support/CMake/Toolchain-Android-ARM.cmake ..
-make
+mkdir build
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=./Support/CMake/Toolchain-Android-ARM64.cmake
+cmake --build build --config Release
 ```
 
-Note that this will build ds2 targeting the highest level API level that the
-NDK supports. If you want to target another api level, e.g. 21, add the flag
-`-DCMAKE_SYSTEM_VERSION=21` to your cmake invocation.
-
-#### Testing on Android device
-
-If you would like to use ds2 to run tests in the LLDB test suite using an
-Android device, you should use the script
-`Support/Scripts/prepare-android-ndk.py` to get a checkout of the android NDK.
-The LLDB test suite expects an NDK to exist on your host, and that script will
-download and unpack it where the CMake Toolchain files expect it to be.
+This will build ds2 targeting API level 21. If you want to target another API
+level, e.g. 28, add `-DCMAKE_SYSTEM_VERSION=28` to your CMake invocation.
 
 ### Compiling for Linux ARM
 
@@ -82,19 +82,21 @@ make
 This will generate a binary that you can copy to your device to start
 debugging.
 
-
-
 ## Running ds2
 
 ### Example
 
 #### On the remote host
 
-Launch ds2 with something like:
+Launch ds2 as a single-instance gdb server debugging a program:
 
     $ ./ds2 gdbserver localhost:4242 /path/to/TestSimpleOutput
 
-ds2 is now ready to accept connections on port 4242 from lldb.
+Launch ds2 in platform mode:
+
+    $ ./ds2 platform --server --listen localhost:4242
+
+In both cases, ds2 is ready to accept connections on port 4242 from lldb.
 
 #### On your local host
 
