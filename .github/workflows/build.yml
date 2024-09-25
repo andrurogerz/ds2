@@ -252,6 +252,18 @@ jobs:
         with:
           path: ${{ github.workspace }}/SourceCache/ds2
 
+      - name: Download SDK
+        run: |
+          wget --quiet --directory-prefix=${{ github.workspace }} https://download.tizen.org/sdk/Installer/tizen-studio_5.6/web-cli_Tizen_Studio_5.6_ubuntu-64.bin
+          chmod +x ${{ github.workspace }}/web-cli_Tizen_Studio_5.6_ubuntu-64.bin
+
+      - name: Install SDK
+        run: |
+          yes y | ${{ github.workspace }}/web-cli_Tizen_Studio_5.6_ubuntu-64.bin --accept-license --no-java-check
+          /home/runner/tizen-studio/package-manager/package-manager-cli.bin show-pkgs --tree
+          /home/runner/tizen-studio/package-manager/package-manager-cli.bin install --accept-license --no-java-check TIZEN-8.0-NativeAppDevelopment
+          find /home/runner/tizen-studio
+
       - name: Install compilers
         run: |
           sudo apt-get install -qq --no-install-recommends ${{ matrix.packages }}
