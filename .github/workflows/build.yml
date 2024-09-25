@@ -252,6 +252,11 @@ jobs:
         with:
           path: ${{ github.workspace }}/SourceCache/ds2
 
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -qq --no-install-recommends install libncurses5 libkf5itemmodels5 libkf5kiowidgets5 python2.7 gettext libkchart2 libpython2.7
+
       - name: Download SDK
         run: |
           wget --quiet --directory-prefix=${{ github.workspace }} https://download.tizen.org/sdk/Installer/tizen-studio_5.6/web-cli_Tizen_Studio_5.6_ubuntu-64.bin
