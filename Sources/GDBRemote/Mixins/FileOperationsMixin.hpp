@@ -89,6 +89,12 @@ ErrorCode FileOperationsMixin<T>::onFileExists(Session &,
 }
 
 template <typename T>
+ErrorCode onFileComputeMD5(Session &, std::string const &path,
+                           uint8_t md5sum[16]) {
+  return Host::File::fileMD5(path, md5sum);
+}
+
+template <typename T>
 ErrorCode FileOperationsMixin<T>::onFileGetSize(Session &session, std::string const &path,
                         uint64_t &size){
   return Host::File::fileSize(path, size);
@@ -129,24 +135,30 @@ ErrorCode FileOperationsMixin<T>::onQueryModuleInfo(Session &session,
                                                      std::string &path,
                                                      std::string &triple,
                                                      ModuleInfo &info) const {
-  ByteVector buildId;
-  if (!Platform::GetExecutableFileBuildID(path, buildId))
-    return kErrorUnknown;
-
-  // TODO(andrurogerz): Not all executable files contain an embedded build ID.
-  // If GetExecutableFileBuildID fails, calculate an md5 hash of the file
-  // contents and return that as an "md5" field instead of the "uuid" field.
-
-  // send the uuid as a hex-encoded, upper-case string
-  std::ostringstream ss;
-  for(const auto b : buildId)
-    ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(b);
-
   auto error = File::fileSize(path, info.file_size);
   if (error != kSuccess)
     return error;
 
-  info.uuid = ss.str();
+  ByteVector buildId;
+  const bool hasBuildId = Platform::GetExecutableFileBuildID(path, buildId);
+  if (!hasBuildId) {
+    // Not all executable files contain an embedded build ID. If
+    // GetExecutableFileBuildID fails, instead calculate an md5 hash of the file
+    // contents and return that as an "md5" field instead of the "uuid" field.
+    buildId.resize(Host::File::MD5_DIGEST_LENGTH);
+    CHK(Host::File::fileMD5(path, buildId.data()));
+  }
+
+  // send the uuid/md5 as an upper-case string
+  std::ostringstream ss;
+  for(const auto b : buildId)
+    ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(b);
+
+  if (hasBuildId)
+    info.uuid = ss.str();
+  else
+    info.md5 = ss.str();
+
   info.triple = triple;
   info.file_path = path;
   info.file_offset = 0;

@@ -413,6 +413,7 @@ struct MappedFileInfo {
 
 struct ModuleInfo {
   std::string uuid;
+  std::string md5;
   std::string triple;
   std::string file_path;
   uint64_t file_offset;

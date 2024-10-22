@@ -10,6 +10,7 @@
 
 #include "DebugServer2/Host/File.h"
 #include "DebugServer2/Host/Platform.h"
+#include "DebugServer2/Utils/md5.h"
 
 #include <fcntl.h>
 #include <limits>
@@ -214,6 +215,24 @@ ErrorCode File::fileMode(std::string const &path, uint32_t &mode) {
     return Platform::TranslateError();
 
   mode = static_cast<uint32_t>(ALLPERMS & stbuf.st_mode);
+  return kSuccess;
+}
+
+ErrorCode File::fileMD5(std::string const &path, uint8_t md5[MD5_DIGEST_LENGTH]) {
+  MD5_CTX md5Context;
+  unsigned char data[1024];
+
+  int fd = ::open(path.c_str(), O_RDONLY);
+  if (fd < 0)
+    return Platform::TranslateError();
+
+  MD5_Init(&md5Context);
+  ssize_t bytesRead;
+  while ((bytesRead = ::read(fd, data, sizeof(data))) > 0) {
+      MD5_Update(&md5Context, data, bytesRead);
+  }
+  ::close(fd);
+  MD5_Final(md5, &md5Context);
   return kSuccess;
 }
 } // namespace Host

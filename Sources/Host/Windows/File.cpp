@@ -51,5 +51,9 @@ ErrorCode File::fileMode(std::string const &path, uint32_t &mode) {
   return kErrorUnsupported;
 }
 
+ErrorCode File::fileMD5(std::string const &path, uint8_t md5[MD5_DIGEST_LENGTH]) {
+  return kErrorUnsupported;
+}
+
 } // namespace Host
 } // namespace ds2
