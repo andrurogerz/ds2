@@ -89,6 +89,12 @@ ErrorCode FileOperationsMixin<T>::onFileExists(Session &,
 }
 
 template <typename T>
+ErrorCode onFileComputeMD5(Session &, std::string const &path,
+                           uint8_t md5sum[16]) {
+  return Host::File::fileMD5(path, md5sum);
+}
+
+template <typename T>
 ErrorCode FileOperationsMixin<T>::onFileGetSize(Session &session, std::string const &path,
                         uint64_t &size){
   return Host::File::fileSize(path, size);
@@ -129,31 +135,29 @@ ErrorCode FileOperationsMixin<T>::onQueryModuleInfo(Session &session,
                                                      std::string &path,
                                                      std::string &triple,
                                                      ModuleInfo &info) const {
+  auto error = File::fileSize(path, info.file_size);
+  if (error != kSuccess)
+    return error;
+
   ByteVector buildId;
-  if (!Platform::GetExecutableFileBuildID(path, buildId)) {
-    // Not all executable files contain an embedded build ID. In this case,
-    // return a crc32 of the contents of the file. The documentation for
-    // `qModuleInfo` suggests an md5 hash can be returned as "md5" in the
-    // response instead of "uuid." However, returning a crc32 is consistent
-    // with behavior of lldb-server.
-    uint32_t crc;
-    CHK(File::crc32(path, crc));
-    std::copy(reinterpret_cast<uint8_t*>(&crc),
-              reinterpret_cast<uint8_t*>(&crc) + sizeof(crc),
-              std::back_inserter(buildId));
+  const bool hasBuildId = Platform::GetExecutableFileBuildID(path, buildId);
+  if (!hasBuildId) {
+    // Not all executable files contain an embedded build ID. If
+    // GetExecutableFileBuildID fails, instead calculate an md5 hash of the file
+    // contents and return that as an "md5" field instead of the "uuid" field.
+    buildId.resize(Host::File::MD5_DIGEST_LENGTH);
+    CHK(Host::File::fileMD5(path, buildId.data()));
   }
 
-  // format the uuid as an upper-case string with two hex chars per byte
+  // send the uuid/md5 as an upper-case string
   std::ostringstream ss;
   for(const auto b : buildId)
     ss << std::uppercase << std::hex << std::setfill('0') << std::setw(2) << int(b);
 
-  info.uuid = ss.str();
-
-
-  auto error = File::fileSize(path, info.file_size);
-  if (error != kSuccess)
-    return error;
+  if (hasBuildId)
+    info.uuid = ss.str();
+  else
+    info.md5 = ss.str();
 
   info.triple = triple;
   info.file_path = path;

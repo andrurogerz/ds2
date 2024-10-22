@@ -11,6 +11,7 @@
 #include "DebugServer2/Host/File.h"
 #include "DebugServer2/Host/Platform.h"
 #include "DebugServer2/Utils/crc32.h"
+#include "DebugServer2/Utils/md5.h"
 
 #include <fcntl.h>
 #include <limits>
@@ -218,22 +219,22 @@ ErrorCode File::fileMode(std::string const &path, uint32_t &mode) {
   return kSuccess;
 }
 
-ErrorCode File::crc32(std::string const &path, uint32_t &crc) {
+ErrorCode File::fileMD5(std::string const &path, uint8_t md5[MD5_DIGEST_LENGTH]) {
   int fd = ::open(path.c_str(), O_RDONLY);
   if (fd < 0)
     return Platform::TranslateError();
 
-  ByteVector buffer(getpagesize());
   ssize_t bytesRead;
+  ByteVector buffer(getpagesize());
 
-  crc = ::crc32(0L, nullptr, 0);
+  MD5_CTX md5Context;
+  MD5_Init(&md5Context);
   while ((bytesRead = ::read(fd, buffer.data(), buffer.size())) > 0)
-      crc = ::crc32(crc, buffer.data(), bytesRead);
+      MD5_Update(&md5Context, buffer.data(), bytesRead);
+  MD5_Final(md5, &md5Context);
 
   ::close(fd);
-
   return kSuccess;
 }
-
 } // namespace Host
 } // namespace ds2
