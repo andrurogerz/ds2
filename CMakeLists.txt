@@ -202,7 +202,6 @@ add_executable(ds2
   Sources/Target/Common/${DS2_ARCHITECTURE}/ProcessBase${DS2_ARCHITECTURE}.cpp
 
   Sources/Utils/Backtrace.cpp
-  Sources/Utils/crc32.c
   Sources/Utils/Log.cpp
   Sources/Utils/md5.c
   Sources/Utils/OptParse.cpp

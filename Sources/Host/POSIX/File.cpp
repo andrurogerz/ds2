@@ -10,7 +10,6 @@
 
 #include "DebugServer2/Host/File.h"
 #include "DebugServer2/Host/Platform.h"
-#include "DebugServer2/Utils/crc32.h"
 #include "DebugServer2/Utils/md5.h"
 
 #include <fcntl.h>
