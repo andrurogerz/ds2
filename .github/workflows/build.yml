@@ -413,6 +413,16 @@ jobs:
               SourceCache/llvm/lldb/test/API/tools
               SourceCache/llvm/lldb/test/API/sanity
               SourceCache/llvm/lldb/test/API/types
+          - test-category: misc
+            runner: ubuntu-24.04-arm
+            arch: arm
+            test-subdirs: >-
+              SourceCache/llvm/lldb/test/API/api
+              SourceCache/llvm/lldb/test/API/lang
+              SourceCache/llvm/lldb/test/API/linux
+              SourceCache/llvm/lldb/test/API/tools
+              SourceCache/llvm/lldb/test/API/sanity
+              SourceCache/llvm/lldb/test/API/types
 
           - test-category: commands
             runner: ubuntu-latest
@@ -468,6 +478,14 @@ jobs:
           sudo apt-get update
           sudo apt-get install -qq --no-install-recommends gcc-multilib g++-multilib
 
+      - if: matrix.arch == 'arm'
+        run: |
+          sudo dpkg --add-architecture armhf
+          sudo apt-get update
+          sudo apt-get install -qq --no-install-recommends libc6:armhf libstdc++6:armhf
+          sudo find / -name ld-linux.so.3
+          sudo ln -s /lib/arm-linux-gnueabihf/ld-linux-armhf.so.3 /lib/arm-linux-gnueabihf/ld-linux.so.3
+
       - uses: actions/download-artifact@v4
         with:
           name: llvm-${{ runner.os }}-${{ runner.arch }}
@@ -498,7 +516,7 @@ jobs:
 
       - run: |
           mkdir -p ${{ github.workspace }}/temp
-          ${{ github.workspace }}/BinaryCache/ds2/ds2 platform --server --daemonize --listen localhost:5432
+          strace -e trace=open,openat ${{ github.workspace }}/BinaryCache/ds2/ds2 platform --server --daemonize --listen localhost:5432
           ${{ github.workspace }}/BinaryCache/llvm/bin/lldb-dotest 1>/dev/null  \
               --out-of-tree-debugserver                                         \
               --arch ${{ matrix.arch }}                                         \
