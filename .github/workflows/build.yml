@@ -659,3 +659,35 @@ jobs:
             --excluded ${{ github.workspace }}/SourceCache/ds2/Support/Testing/Excluded/upstream/android-${{ matrix.llvm-arch }}.excluded
             --excluded ${{ github.workspace }}/SourceCache/ds2/Support/Testing/Excluded/upstream/non-debugserver-tests.excluded
             ${{ matrix.test-subdirs }}
+
+  test-android-arm64-v8a:
+    needs: [android-windows-ndk, build-lldb-linux]
+    runs-on: macos-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - test-category: smoke
+            arch: arm64-v8a
+            llvm-arch: aarch64
+            android-api-level: 28
+            test-subdirs: >-
+              SourceCache/llvm/lldb/test/API/android
+              SourceCache/llvm/lldb/test/API/api
+              SourceCache/llvm/lldb/test/API/linux
+              SourceCache/llvm/lldb/test/API/sanity
+
+    name: Test Android ${{ matrix.arch}} ${{ matrix.test-category }}
+
+    steps:
+      - name: Launch Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          emulator-build: ${{ matrix.emulator-build }}
+          api-level: ${{ matrix.android-api-level }}
+          arch: ${{ matrix.arch }}
+          emulator-options: -no-snapshot -no-window -noaudio -no-boot-anim -camera-back none -gpu swiftshader_indirect ${{ matrix.emulator-options }}
+          disable-animations: true
+          script: >
+            $ANDROID_SDK_ROOT/platform-tools/adb devices
