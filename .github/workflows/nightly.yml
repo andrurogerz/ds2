@@ -18,11 +18,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Get the latest nightly tag
+        id: get-latest-tag
+        run: echo "latest_tag=$(git describe --tags --match nightly-* --abbrev=0)" >> $GITHUB_OUTPUT
+
+      - name: Check for new commits since the last nightly tag
+        id: check-new-commits
+        run: |
+          if [ -z "$(git log ${{ steps.get-latest-tag.outputs.latest_tag }}..HEAD --oneline)" ]; then
+            echo "has_new_commits=false" >> $GITHUB_OUTPUT
+          else
+            echo "has_new_commits=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Get today's date
+        if: steps.check-new-commits.outputs.has_new_commits == 'true'
         id: date
         run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
       - name: Create nightly tag
+        if: steps.check-new-commits.outputs.has_new_commits == 'true'
         uses: actions/github-script@v7
         with:
           script: |
