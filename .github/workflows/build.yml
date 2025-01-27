@@ -662,7 +662,7 @@ jobs:
 
   test-android-arm64-v8a:
     needs: [android-windows-ndk, build-lldb-linux]
-    runs-on: macos-latest
+    runs-on: macos-15
 
     strategy:
       fail-fast: false
