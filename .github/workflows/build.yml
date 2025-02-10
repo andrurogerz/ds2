@@ -8,7 +8,7 @@ on:
   workflow_call:
 
 env:
-  LLVM_REF: ec450b19004a653f3db3ad50e88fbf6529a9d841
+  LLVM_REF: llvmorg-20.1.0-rc1
   SCCACHE_DIRECT: yes
 
 jobs:
