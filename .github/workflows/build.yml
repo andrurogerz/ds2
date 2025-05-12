@@ -403,7 +403,7 @@ jobs:
     needs: [linux, build-lldb]
     runs-on: ${{ matrix.runner }}
 
-    name: Test Linux ${{ matrix.arch }} ${{ matrix.test-category }}
+    name: Test ${{ matrix.os }} ${{ matrix.arch }} ${{ matrix.test-category }}
 
     strategy:
       fail-fast: false
