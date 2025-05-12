@@ -319,25 +319,32 @@ jobs:
           name: android-${{ matrix.abi }}-ds2
           path: ${{ github.workspace }}/BinaryCache/ds2.tar
 
-  build-lldb-linux:
+  build-lldb:
     name: Build LLDB
     runs-on: ${{ matrix.runner }}
 
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-latest, ubuntu-24.04-arm]
+        runner: [ubuntu-latest, ubuntu-24.04-arm, macos-13 ]
 
     steps:
-      - name: Install LZMA libraries
+      - name: Install libraries
+        if: ${{ runner.os == 'Linux' }}
         run: |
           sudo apt-get update
           sudo apt-get install -qq --no-install-recommends lzma-dev liblzma-dev
 
-      - if: ${{ !contains(matrix.runner, 'arm') }}
+      - name: Install libraries
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          brew update
+          brew install xz swig
+
+      - if: ${{ runner.os != 'Linux' || runner.arch != 'ARM64' }}
         uses: seanmiddleditch/gha-setup-ninja@v5
 
-      - if: contains(matrix.runner, 'arm')
+      - if: ${{ runner.os == 'Linux' && runner.arch == 'ARM64' }}
         uses: seanmiddleditch/gha-setup-ninja@v5
         with:
           # TODO(andrurogerz): seanmiddleditch/gha-setup-ninja does not properly
@@ -369,6 +376,7 @@ jobs:
                 -S ${{ github.workspace }}/SourceCache/llvm/llvm                \
                 -D LLVM_ENABLE_PROJECTS='clang;lldb'                            \
                 -D LLVM_TARGETS_TO_BUILD="host"                                 \
+                -D LLVM_ENABLE_RUNTIMES="libcxxabi;libcxx;libunwind"            \
                 -D LLDB_ENABLE_PYTHON=On                                        \
                 -D LLDB_ENABLE_LZMA=On                                          \
                 -D CMAKE_C_COMPILER_LAUNCHER=sccache                            \
@@ -392,7 +400,7 @@ jobs:
           path: ${{ github.workspace }}/BinaryCache/llvm.tar
 
   test-linux:
-    needs: [linux, build-lldb-linux]
+    needs: [linux, build-lldb]
     runs-on: ${{ matrix.runner }}
 
     name: Test Linux ${{ matrix.arch }} ${{ matrix.test-category }}
@@ -481,7 +489,7 @@ jobs:
               SourceCache/llvm/lldb/test/API/functionalities
 
     steps:
-      - if: matrix.arch == 'i686'
+      - if: ${{ matrix.arch == 'i686' && runner.os == 'Linux' }}
         run: |
           sudo apt-get update
           sudo apt-get install -qq --no-install-recommends gcc-multilib g++-multilib
@@ -530,7 +538,7 @@ jobs:
               ${{ matrix.test-subdirs }}
 
   test-android-x86:
-    needs: [android-windows-ndk, build-lldb-linux]
+    needs: [android-windows-ndk, build-lldb]
     runs-on: ubuntu-latest
 
     strategy:
